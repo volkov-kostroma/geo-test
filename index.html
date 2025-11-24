@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Геолокация + Яндекс.Карта</title>
+
+<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU"></script>
+
+<style>
+    #map {
+        width: 600px;
+        height: 400px;
+        margin-top: 20px;
+        border: 1px solid #ccc;
+    }
+</style>
+</head>
+
+<body>
+
+<h2>Определение геолокации и показ на Яндекс.Карте</h2>
+<button onclick="getLocation()">Определить местоположение</button>
+
+<pre id="output"></pre>
+<div id="map"></div>
+
+<script>
+let map; // глобальная карта
+
+function initMap(lat, lon) {
+    if (!map) {
+        map = new ymaps.Map("map", {
+            center: [lat, lon],
+            zoom: 17
+        });
+    } else {
+        map.setCenter([lat, lon], 17);
+        map.geoObjects.removeAll();
+    }
+
+    const placemark = new ymaps.Placemark([lat, lon], {
+        balloonContent: "Ваше местоположение"
+    });
+
+    map.geoObjects.add(placemark);
+}
+
+function getLocation() {
+    const out = document.getElementById("output");
+
+    if (!navigator.geolocation) {
+        out.textContent = "❌ Геолокация не поддерживается.";
+        return;
+    }
+
+    out.textContent = "⏳ Получаю координаты...";
+
+    navigator.geolocation.getCurrentPosition(
+        // УСПЕШНО
+        (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            const acc = position.coords.accuracy;
+
+            const yandexUrl = `https://yandex.ru/maps/?pt=${lon},${lat}&z=17&l=map`;
+
+            out.innerHTML =
+                "✅ Геолокация найдена!\n\n" +
+                "Широта:  " + lat + "\n" +
+                "Долгота: " + lon + "\n" +
+                "Точность: " + acc + " м\n\n" +
+                "🔗 <a href=\"" + yandexUrl + "\" target=\"_blank\">Открыть в Яндекс.Картах</a>";
+
+            // ждём загрузки API Яндекса и строим карту
+            ymaps.ready(() => initMap(lat, lon));
+        },
+
+        // ОШИБКА
+        (error) => {
+            let msg = "❌ Ошибка геолокации: ";
+
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    msg += "Пользователь запретил доступ.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    msg += "Невозможно определить местоположение.";
+                    break;
+                case error.TIMEOUT:
+                    msg += "Таймаут ответа.";
+                    break;
+                default:
+                    msg += "Неизвестная ошибка.";
+                    break;
+            }
+
+            out.textContent = msg;
+        },
+
+        // НАСТРОЙКИ
+        {
+            enableHighAccuracy: true,
+            timeout: 8000,
+            maximumAge: 0
+        }
+    );
+}
+</script>
+
+</body>
+</html>
